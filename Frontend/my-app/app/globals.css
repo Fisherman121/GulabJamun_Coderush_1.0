@@ -1,0 +1,195 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Updated color tokens for HFT trading dashboard with dark theme and teal accents */
+  --background: oklch(0.145 0.02 240); /* Deep charcoal background */
+  --foreground: oklch(1 0 0); /* Pure white text */
+  --card: oklch(0.18 0.02 240); /* Darker gray for cards */
+  --card-foreground: oklch(1 0 0); /* White text for cards */
+  --popover: oklch(0.18 0.02 240); /* Dark gray for popovers */
+  --popover-foreground: oklch(1 0 0); /* White text for popovers */
+  --primary: oklch(0.58 0.15 180); /* Teal primary color */
+  --primary-foreground: oklch(1 0 0); /* White text for primary */
+  --secondary: oklch(0.68 0.12 180); /* Lighter teal secondary */
+  --secondary-foreground: oklch(1 0 0); /* White text for secondary */
+  --muted: oklch(0.32 0.02 240); /* Muted gray */
+  --muted-foreground: oklch(0.7 0 0); /* Light gray for muted text */
+  --accent: oklch(0.68 0.12 180); /* Teal accent */
+  --accent-foreground: oklch(1 0 0); /* White text for accent */
+  --destructive: oklch(0.62 0.25 25); /* Orange-red for losses */
+  --destructive-foreground: oklch(1 0 0); /* White text for destructive */
+  --border: oklch(0.32 0.02 240); /* Dark gray borders */
+  --input: oklch(0.18 0.02 240); /* Dark input backgrounds */
+  --ring: oklch(0.58 0.15 180); /* Teal focus rings */
+  --chart-1: oklch(0.58 0.15 180); /* Teal for charts */
+  --chart-2: oklch(0.75 0.2 140); /* Bright green for gains */
+  --chart-3: oklch(0.62 0.25 25); /* Orange-red for losses */
+  --chart-4: oklch(0.65 0.15 60); /* Yellow for warnings */
+  --chart-5: oklch(0.55 0.2 280); /* Purple for volume */
+  --radius: 0.5rem;
+  --sidebar: oklch(0.18 0.02 240); /* Dark sidebar */
+  --sidebar-foreground: oklch(1 0 0); /* White sidebar text */
+  --sidebar-primary: oklch(0.58 0.15 180); /* Teal sidebar primary */
+  --sidebar-primary-foreground: oklch(1 0 0); /* White sidebar primary text */
+  --sidebar-accent: oklch(0.68 0.12 180); /* Teal sidebar accent */
+  --sidebar-accent-foreground: oklch(1 0 0); /* White sidebar accent text */
+  --sidebar-border: oklch(0.32 0.02 240); /* Dark sidebar borders */
+  --sidebar-ring: oklch(0.58 0.15 180); /* Teal sidebar focus rings */
+
+  /* Added custom trading-specific color tokens */
+  --trading-gain: oklch(0.75 0.2 140); /* Bright green for profits */
+  --trading-loss: oklch(0.62 0.25 25); /* Orange-red for losses */
+  --trading-neutral: oklch(0.7 0 0); /* Light gray for neutral */
+  --trading-warning: oklch(0.65 0.15 60); /* Yellow for warnings */
+  --trading-volume: oklch(0.55 0.2 280); /* Purple for volume indicators */
+}
+
+.dark {
+  /* Dark mode uses same colors as root since this is a dark-first design */
+  --background: oklch(0.08 0.02 240); /* Even darker background for dark mode */
+  --foreground: oklch(1 0 0);
+  --card: oklch(0.12 0.02 240); /* Slightly darker cards in dark mode */
+  --card-foreground: oklch(1 0 0);
+  --popover: oklch(0.12 0.02 240);
+  --popover-foreground: oklch(1 0 0);
+  --primary: oklch(0.58 0.15 180);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.68 0.12 180);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.25 0.02 240);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.68 0.12 180);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.62 0.25 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.25 0.02 240);
+  --input: oklch(0.12 0.02 240);
+  --ring: oklch(0.58 0.15 180);
+  --chart-1: oklch(0.58 0.15 180);
+  --chart-2: oklch(0.75 0.2 140);
+  --chart-3: oklch(0.62 0.25 25);
+  --chart-4: oklch(0.65 0.15 60);
+  --chart-5: oklch(0.55 0.2 280);
+  --sidebar: oklch(0.12 0.02 240);
+  --sidebar-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.58 0.15 180);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.68 0.12 180);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(0.25 0.02 240);
+  --sidebar-ring: oklch(0.58 0.15 180);
+
+  --trading-gain: oklch(0.75 0.2 140);
+  --trading-loss: oklch(0.62 0.25 25);
+  --trading-neutral: oklch(0.65 0 0);
+  --trading-warning: oklch(0.65 0.15 60);
+  --trading-volume: oklch(0.55 0.2 280);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Added trading-specific color utilities */
+  --color-trading-gain: var(--trading-gain);
+  --color-trading-loss: var(--trading-loss);
+  --color-trading-neutral: var(--trading-neutral);
+  --color-trading-warning: var(--trading-warning);
+  --color-trading-volume: var(--trading-volume);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Added custom utility classes for trading dashboard */
+@layer utilities {
+  .text-trading-gain {
+    color: var(--color-trading-gain);
+  }
+  .text-trading-loss {
+    color: var(--color-trading-loss);
+  }
+  .text-trading-neutral {
+    color: var(--color-trading-neutral);
+  }
+  .text-trading-warning {
+    color: var(--color-trading-warning);
+  }
+  .text-trading-volume {
+    color: var(--color-trading-volume);
+  }
+  .bg-trading-gain {
+    background-color: var(--color-trading-gain);
+  }
+  .bg-trading-loss {
+    background-color: var(--color-trading-loss);
+  }
+  .bg-trading-neutral {
+    background-color: var(--color-trading-neutral);
+  }
+  .bg-trading-warning {
+    background-color: var(--color-trading-warning);
+  }
+  .bg-trading-volume {
+    background-color: var(--color-trading-volume);
+  }
+
+  /* Added order book styling */
+  .order-book-bid {
+    background: linear-gradient(90deg, transparent 0%, rgba(16, 185, 129, 0.1) 100%);
+  }
+  .order-book-ask {
+    background: linear-gradient(90deg, transparent 0%, rgba(239, 68, 68, 0.1) 100%);
+  }
+
+  /* Added volatility clustering effects */
+  .volatility-high {
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+  }
+  .volatility-low {
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  }
+}

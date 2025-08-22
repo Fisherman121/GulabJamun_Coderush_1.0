@@ -145,12 +145,23 @@ class HighFrequencyTradingBot:
         self.risk_manager = RiskManager()
         
         # Optimized trading parameters for high frequency
-        self.base_spread = 0.05  # ₹0.05 base spread
         self.inventory_skew_factor = 0.0005  # More aggressive skewing
         self.max_order_size = 50  # Smaller, more frequent orders
-        self.tick_size = 0.05  # ₹0.05 tick size for NSE
-        self.min_profit_per_trade = 0.10  # ₹0.10 minimum profit target
         self.trade_frequency = 0.001  # 1ms decision interval
+        
+        # Asset-specific configurations
+        self.asset_configs = {
+            'RELIANCE': {'tick_size': 0.05, 'base_spread': 0.05, 'volatility_factor': 1.0},
+            'TCS': {'tick_size': 0.05, 'base_spread': 0.05, 'volatility_factor': 0.9},
+            'HDFCBANK': {'tick_size': 0.05, 'base_spread': 0.05, 'volatility_factor': 1.2},
+            'INFY': {'tick_size': 0.05, 'base_spread': 0.05, 'volatility_factor': 1.1},
+            'ITC': {'tick_size': 0.05, 'base_spread': 0.05, 'volatility_factor': 0.8},
+            'BITCOIN': {'tick_size': 0.01, 'base_spread': 5.0, 'volatility_factor': 2.0},
+            'ETHEREUM': {'tick_size': 0.01, 'base_spread': 1.0, 'volatility_factor': 2.5}
+        }
+        
+        # Set current asset parameters
+        self.update_asset_parameters()
         
         # Performance tracking
         self.trade_history: List[Trade] = []
@@ -164,16 +175,28 @@ class HighFrequencyTradingBot:
         self.active_orders: Dict[str, dict] = {}
         self.order_counter = 0
         
+    def update_asset_parameters(self):
+        """Update trading parameters based on current asset"""
+        config = self.asset_configs.get(self.symbol, {
+            'tick_size': 0.05, 'base_spread': 0.05, 'volatility_factor': 1.0
+        })
+        
+        self.tick_size = config['tick_size']
+        self.base_spread = config['base_spread']
+        self.volatility_factor = config['volatility_factor']
+        self.min_profit_per_trade = self.base_spread * 2  # 2x spread minimum profit
+        
     def generate_market_data(self) -> MarketData:
         """Generate realistic NSE market data simulation with smoother movement"""
         current_time = time.time()
         
-        # Base prices for NSE stocks
+        # Base prices for NSE stocks and crypto assets
         base_prices = {
             'RELIANCE': 2850.0, 'TCS': 4200.0, 'HDFCBANK': 1670.0,
             'INFY': 1860.0, 'ITC': 485.0, 'SBIN': 820.0,
             'BHARTIARTL': 1520.0, 'KOTAKBANK': 1750.0,
-            'LT': 3600.0, 'ASIANPAINT': 2950.0
+            'LT': 3600.0, 'ASIANPAINT': 2950.0,
+            'BITCOIN': 43250.0, 'ETHEREUM': 2567.8
         }
         
         base_price = base_prices.get(self.symbol, 1000.0)
@@ -183,6 +206,9 @@ class HighFrequencyTradingBot:
             # Update volatility model with smoothing
             volatility = self.volatility_model.update(self.last_price)
             volatility = max(min(volatility, 0.002), 0.0001)  # Cap volatility for smoothness
+            
+            # Apply asset-specific volatility factor
+            volatility *= getattr(self, 'volatility_factor', 1.0)
             
             # Add momentum for smoother transitions
             momentum_factor = 0.7  # Strong momentum
@@ -330,41 +356,43 @@ class HighFrequencyTradingBot:
         current_time = time.time()
         pnl = 0
         
-        # Calculate realistic P&L with market-making spread capture
+        # Calculate realistic P&L - most trades break even, some profit, some lose
+        trade_pnl = 0
+        
         if side == 'BUY':
-            # Market-making profit: we buy at bid, sell at ask
-            spread_capture = np.random.uniform(0.02, 0.08)  # ₹0.02-0.08 per share
-            trade_pnl = quantity * spread_capture
-            
-            if self.position < 0:  # Covering short
+            if self.position < 0:  # Covering short position
                 cover_qty = min(quantity, abs(self.position))
-                pnl = cover_qty * (self.avg_price - price) + trade_pnl
+                pnl = cover_qty * (self.avg_price - price)
                 self.realized_pnl += pnl
+                trade_pnl = pnl
                 self.position += quantity
-            else:  # Adding long
+            else:  # Adding to long position
                 total_cost = self.position * self.avg_price + quantity * price
                 self.position += quantity
                 if self.position > 0:
                     self.avg_price = total_cost / self.position
-                pnl = trade_pnl
-                self.realized_pnl += pnl
         else:  # SELL
-            # Market-making profit: we sell at ask, buy at bid
-            spread_capture = np.random.uniform(0.02, 0.08)  # ₹0.02-0.08 per share
-            trade_pnl = quantity * spread_capture
-            
-            if self.position > 0:  # Selling long
+            if self.position > 0:  # Selling long position
                 sell_qty = min(quantity, self.position)
-                pnl = sell_qty * (price - self.avg_price) + trade_pnl
+                pnl = sell_qty * (price - self.avg_price)
                 self.realized_pnl += pnl
+                trade_pnl = pnl
                 self.position -= quantity
-            else:  # Adding short
+            else:  # Adding to short position
                 total_cost = abs(self.position) * self.avg_price + quantity * price
                 self.position -= quantity
                 if self.position < 0:
                     self.avg_price = total_cost / abs(self.position)
-                pnl = trade_pnl
-                self.realized_pnl += pnl
+        
+        # Occasional market-making profit (only 30% of trades are profitable)
+        if np.random.random() < 0.3:  # 30% chance of capturing spread
+            spread_profit = quantity * np.random.uniform(0.01, 0.05)  # ₹0.01-0.05 per share
+            self.realized_pnl += spread_profit
+            trade_pnl += spread_profit
+        elif np.random.random() < 0.1:  # 10% chance of small loss (adverse selection)
+            spread_loss = quantity * np.random.uniform(-0.03, -0.01)  # Small loss
+            self.realized_pnl += spread_loss
+            trade_pnl += spread_loss
         
         # Create trade record
         trade = Trade(
@@ -390,31 +418,26 @@ class HighFrequencyTradingBot:
             self.total_pnl = self.realized_pnl + unrealized_pnl
     
     def simulate_order_fills(self, market_data: MarketData):
-        """Simulate order fills with higher frequency for HFT"""
-        # Much higher fill probability for more active trading
-        base_fill_probability = 0.3  # 30% base chance
-        
+        """Simulate realistic order fills - only when market actually hits our prices"""
         for order_id, order in list(self.active_orders.items()):
-            # Calculate dynamic fill probability based on market conditions
-            price_improvement = 0
+            should_fill = False
+            execution_price = order['price']
+            
+            # Realistic fill logic: orders fill when market moves through our price
             if order['side'] == 'BUY':
-                price_improvement = max(0, market_data.bid_price - order['price'])
-                should_fill = (market_data.last_price <= order['price'] or 
-                             np.random.random() < base_fill_probability)
+                # Buy order fills when market drops to our bid or below
+                if market_data.last_price <= order['price'] or market_data.bid_price >= order['price']:
+                    should_fill = True
             else:  # SELL
-                price_improvement = max(0, order['price'] - market_data.ask_price)
-                should_fill = (market_data.last_price >= order['price'] or 
-                             np.random.random() < base_fill_probability)
+                # Sell order fills when market rises to our ask or above
+                if market_data.last_price >= order['price'] or market_data.ask_price <= order['price']:
+                    should_fill = True
             
-            # Higher probability for orders with price improvement
-            if price_improvement > 0:
-                should_fill = should_fill or np.random.random() < 0.7
-            
-            if should_fill:
-                # Add some realistic slippage occasionally
-                execution_price = order['price']
-                if np.random.random() < 0.1:  # 10% chance of slight slippage
-                    slippage = np.random.uniform(-self.tick_size/2, self.tick_size/2)
+            # Only occasional fills for more realistic trading
+            if should_fill and np.random.random() < 0.15:  # 15% chance when conditions are met
+                # Add minimal slippage
+                if np.random.random() < 0.1:  # 10% chance of tiny slippage
+                    slippage = np.random.uniform(-self.tick_size/4, self.tick_size/4)
                     execution_price += slippage
                 
                 self.execute_trade(order['side'], execution_price, order['quantity'], order_id)
@@ -439,48 +462,23 @@ class HighFrequencyTradingBot:
         return order_id
     
     def update_performance_metrics(self, market_data: MarketData):
-        """Update performance tracking data with dynamic P&L"""
+        """Update performance tracking with REALISTIC P&L - only changes with trades/position value"""
         current_time = time.time()
         
-        # Calculate current PnL with continuous changes
-        if self.avg_price > 0 and self.position != 0:
+        # Calculate ONLY realized + unrealized P&L (no fake continuous profit)
+        unrealized_pnl = 0
+        if self.position != 0 and self.avg_price > 0:
+            # Unrealized P&L from current position
             unrealized_pnl = self.position * (market_data.last_price - self.avg_price)
-            total_pnl = self.realized_pnl + unrealized_pnl
-        else:
-            total_pnl = self.realized_pnl
         
-        # Add realistic P&L variations based on market conditions
-        if len(self.trade_history) > 0 or hasattr(self, 'start_time'):
-            # More realistic P&L simulation with market fluctuations
-            time_since_start = current_time - getattr(self, 'start_time', current_time)
-            
-            # Base market-making profit (conservative)
-            base_rate = 0.02  # ₹0.02 per second (much lower base rate)
-            
-            # Add market volatility impact on P&L
-            volatility = self.volatility_model.volatilities[-1] if self.volatility_model.volatilities else 0.001
-            volatility_impact = np.random.normal(0, volatility * 50)  # Volatility affects P&L
-            
-            # Add trend component (sometimes up, sometimes down)
-            trend_factor = np.sin(time_since_start * 0.1) * 0.5  # Oscillating trend
-            
-            # Random market shocks
-            if np.random.random() < 0.01:  # 1% chance of market shock
-                market_shock = np.random.uniform(-5, 3)  # More likely to be negative
-            else:
-                market_shock = 0
-                
-            # Combine all factors for realistic P&L
-            pnl_change = (base_rate + volatility_impact + trend_factor + market_shock)
-            
-            # Apply position-based P&L (larger positions = more P&L variation)
-            if self.position != 0:
-                position_pnl = self.position * (market_data.last_price - getattr(self, 'last_position_price', market_data.last_price)) * 0.1
-                total_pnl += position_pnl
-                self.last_position_price = market_data.last_price
-            
-            # Add the realistic change
-            total_pnl += pnl_change
+        # Total P&L = Realized from trades + Unrealized from position
+        total_pnl = self.realized_pnl + unrealized_pnl
+        
+        # Add small random market noise to make it look alive (but not constantly growing)
+        if len(self.pnl_history) > 0:
+            # Small random fluctuations around the true P&L (±₹0.50)
+            noise = np.random.uniform(-0.5, 0.5)
+            total_pnl += noise
         
         # Update histories
         self.pnl_history.append(total_pnl)
@@ -583,7 +581,18 @@ class HighFrequencyTradingBot:
     
     def start(self):
         """Start the trading bot"""
-        self.start_time = time.time()  # Track start time for P&L calculation
+        self.start_time = time.time()
+        
+        # Reset P&L to start fresh
+        self.total_pnl = 0
+        self.realized_pnl = 0
+        self.position = 0
+        self.avg_price = 0
+        
+        # Clear histories for fresh start
+        self.pnl_history.clear()
+        self.trade_history.clear()
+        
         self.trading_thread = threading.Thread(target=self.run_trading_loop)
         self.trading_thread.daemon = True
         self.trading_thread.start()

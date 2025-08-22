@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HFT Trading Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            border-radius: 10px;
+            border: 1px solid #333;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #00ff88, #0088ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        
+        .status.connected {
+            background-color: #00ff8844;
+            color: #00ff88;
+            border: 1px solid #00ff88;
+        }
+        
+        .status.disconnected {
+            background-color: #ff004444;
+            color: #ff4444;
+            border: 1px solid #ff4444;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .card h3 {
+            color: #00ff88;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-value {
+            font-weight: bold;
+        }
+        
+        .positive {
+            color: #00ff88;
+        }
+        
+        .negative {
+            color: #ff4444;
+        }
+        
+        .button {
+            background: linear-gradient(135deg, #0088ff, #0066cc);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 136, 255, 0.3);
+        }
+        
+        .button.danger {
+            background: linear-gradient(135deg, #ff4444, #cc3333);
+        }
+        
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .log {
+            background-color: #111;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            opacity: 0.8;
+        }
+        
+        .log-entry.success {
+            color: #00ff88;
+        }
+        
+        .log-entry.error {
+            color: #ff4444;
+        }
+        
+        .log-entry.info {
+            color: #0088ff;
+        }
+        
+        .chart-placeholder {
+            height: 200px;
+            background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
+            border: 1px solid #333;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-style: italic;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .loading {
+            animation: pulse 1.5s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 HFT Trading System</h1>
+            <p>High-Frequency Market Making Bot - Jane Street Inspired</p>
+            <div id="connectionStatus" class="status disconnected">DISCONNECTED</div>
+        </div>
+        
+        <div class="controls">
+            <button class="button" onclick="testConnection()">Test Backend Connection</button>
+            <button class="button" onclick="startBot()" id="startBtn">Start HFT Bot</button>
+            <button class="button danger" onclick="stopBot()" id="stopBtn" disabled>Stop HFT Bot</button>
+            <button class="button" onclick="refreshData()">Refresh Data</button>
+        </div>
+        
+        <div class="grid">
+            <!-- Market Overview -->
+            <div class="card">
+                <h3>📊 Market Overview</h3>
+                <div id="marketData">
+                    <div class="metric">
+                        <span>NIFTY 50</span>
+                        <span class="metric-value" id="nifty">Loading...</span>
+                    </div>
+                    <div class="metric">
+                        <span>SENSEX</span>
+                        <span class="metric-value" id="sensex">Loading...</span>
+                    </div>
+                    <div class="metric">
+                        <span>Market Status</span>
+                        <span class="metric-value" id="marketStatus">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- HFT Performance -->
+            <div class="card">
+                <h3>⚡ HFT Performance</h3>
+                <div id="hftPerformance">
+                    <div class="metric">
+                        <span>Total P&L</span>
+                        <span class="metric-value" id="totalPnl">₹0.00</span>
+                    </div>
+                    <div class="metric">
+                        <span>Win Rate</span>
+                        <span class="metric-value" id="winRate">0%</span>
+                    </div>
+                    <div class="metric">
+                        <span>Total Trades</span>
+                        <span class="metric-value" id="totalTrades">0</span>
+                    </div>
+                    <div class="metric">
+                        <span>Current Position</span>
+                        <span class="metric-value" id="position">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Order Book -->
+            <div class="card">
+                <h3>📚 Order Book</h3>
+                <div id="orderBook">
+                    <div style="text-align: center; color: #666;">
+                        Order book will appear here when bot is running
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Portfolio -->
+            <div class="card">
+                <h3>💼 Portfolio</h3>
+                <div id="portfolio">
+                    <div class="metric">
+                        <span>Total Value</span>
+                        <span class="metric-value" id="portfolioValue">₹4,85,670</span>
+                    </div>
+                    <div class="metric">
+                        <span>Day P&L</span>
+                        <span class="metric-value positive" id="dayPnl">₹3,240.50</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Charts -->
+        <div class="grid">
+            <div class="card">
+                <h3>📈 Price Chart</h3>
+                <div class="chart-placeholder">Real-time price chart (Chart.js integration)</div>
+            </div>
+            
+            <div class="card">
+                <h3>💰 P&L Chart</h3>
+                <div class="chart-placeholder">P&L over time chart</div>
+            </div>
+        </div>
+        
+        <!-- Activity Log -->
+        <div class="card">
+            <h3>📝 Activity Log</h3>
+            <div class="log" id="activityLog">
+                <div class="log-entry info">System initialized</div>
+                <div class="log-entry">Waiting for backend connection...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isConnected = false;
+        let botRunning = false;
+        const BACKEND_URL = 'http://localhost:5000';
+        
+        // Connection and logging utilities
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.textContent = connected ? 'CONNECTED' : 'DISCONNECTED';
+            statusEl.className = `status ${connected ? 'connected' : 'disconnected'}`;
+        }
+        
+        function logActivity(message, type = 'info') {
+            const logEl = document.getElementById('activityLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        // API functions
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            try {
+                const options = {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    mode: 'cors'
+                };
+                
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+                
+                const response = await fetch(`${BACKEND_URL}/api${endpoint}`, options);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                logActivity(`API Error (${endpoint}): ${error.message}`, 'error');
+                throw error;
+            }
+        }
+        
+        // Test backend connection
+        async function testConnection() {
+            logActivity('Testing backend connection...', 'info');
+            try {
+                const data = await apiCall('/market-overview');
+                updateConnectionStatus(true);
+                logActivity('Backend connection successful!', 'success');
+                loadMarketData();
+                loadPortfolioData();
+            } catch (error) {
+                updateConnectionStatus(false);
+                logActivity('Backend connection failed!', 'error');
+            }
+        }
+        
+        // Load market data
+        async function loadMarketData() {
+            try {
+                const data = await apiCall('/market-overview');
+                
+                document.getElementById('nifty').textContent = 
+                    `${data.indices[0].value.toLocaleString()} (${data.indices[0].change > 0 ? '+' : ''}${data.indices[0].change})`;
+                document.getElementById('nifty').className = 
+                    `metric-value ${data.indices[0].change > 0 ? 'positive' : 'negative'}`;
+                
+                document.getElementById('sensex').textContent = 
+                    `${data.indices[1].value.toLocaleString()} (${data.indices[1].change > 0 ? '+' : ''}${data.indices[1].change})`;
+                document.getElementById('sensex').className = 
+                    `metric-value ${data.indices[1].change > 0 ? 'positive' : 'negative'}`;
+                
+                document.getElementById('marketStatus').textContent = 'OPEN';
+                
+                logActivity('Market data updated', 'success');
+            } catch (error) {
+                logActivity('Failed to load market data', 'error');
+            }
+        }
+        
+        // Load portfolio data
+        async function loadPortfolioData() {
+            try {
+                const data = await apiCall('/portfolio');
+                
+                document.getElementById('portfolioValue').textContent = 
+                    `₹${data.total_value.toLocaleString()}`;
+                document.getElementById('dayPnl').textContent = 
+                    `₹${data.day_pnl.toLocaleString()}`;
+                document.getElementById('dayPnl').className = 
+                    `metric-value ${data.day_pnl > 0 ? 'positive' : 'negative'}`;
+                
+                logActivity('Portfolio data updated', 'success');
+            } catch (error) {
+                logActivity('Failed to load portfolio data', 'error');
+            }
+        }
+        
+        // HFT Bot controls
+        async function startBot() {
+            try {
+                logActivity('Starting HFT Bot...', 'info');
+                const data = await apiCall('/hft/start', 'POST', { symbol: 'RELIANCE' });
+                
+                if (data.success) {
+                    botRunning = true;
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    logActivity(`HFT Bot started for ${data.symbol}`, 'success');
+                    startRealTimeUpdates();
+                } else {
+                    logActivity('Failed to start HFT Bot', 'error');
+                }
+            } catch (error) {
+                logActivity('Error starting HFT Bot', 'error');
+            }
+        }
+        
+        async function stopBot() {
+            try {
+                logActivity('Stopping HFT Bot...', 'info');
+                const data = await apiCall('/hft/stop', 'POST');
+                
+                if (data.success) {
+                    botRunning = false;
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('stopBtn').disabled = true;
+                    logActivity('HFT Bot stopped', 'success');
+                    stopRealTimeUpdates();
+                } else {
+                    logActivity('Failed to stop HFT Bot', 'error');
+                }
+            } catch (error) {
+                logActivity('Error stopping HFT Bot', 'error');
+            }
+        }
+        
+        // Real-time updates
+        let updateInterval;
+        
+        function startRealTimeUpdates() {
+            updateInterval = setInterval(updateHFTData, 1000); // Update every second
+        }
+        
+        function stopRealTimeUpdates() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        }
+        
+        async function updateHFTData() {
+            try {
+                const data = await apiCall('/hft/status');
+                
+                if (data.data) {
+                    // Update performance metrics
+                    document.getElementById('totalPnl').textContent = 
+                        `₹${data.data.performance.total_pnl?.toFixed(2) || '0.00'}`;
+                    document.getElementById('totalPnl').className = 
+                        `metric-value ${data.data.performance.total_pnl > 0 ? 'positive' : 'negative'}`;
+                    
+                    document.getElementById('winRate').textContent = 
+                        `${data.data.performance.win_rate?.toFixed(1) || '0.0'}%`;
+                    
+                    document.getElementById('totalTrades').textContent = 
+                        data.data.performance.total_trades || '0';
+                    
+                    document.getElementById('position').textContent = 
+                        data.data.performance.current_position || '0';
+                    
+                    // Update order book
+                    updateOrderBook(data.data.order_book);
+                }
+            } catch (error) {
+                // Silently handle errors for real-time updates
+            }
+        }
+        
+        function updateOrderBook(orderBook) {
+            if (!orderBook) return;
+            
+            const orderBookEl = document.getElementById('orderBook');
+            let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">';
+            
+            // Bids
+            html += '<div><h4 style="color: #00ff88; margin-bottom: 5px;">Bids</h4>';
+            orderBook.bids?.slice(0, 5).forEach(([price, qty]) => {
+                html += `<div style="font-size: 0.9rem; display: flex; justify-content: space-between;">
+                    <span>${price}</span><span>${qty}</span>
+                </div>`;
+            });
+            html += '</div>';
+            
+            // Asks
+            html += '<div><h4 style="color: #ff4444; margin-bottom: 5px;">Asks</h4>';
+            orderBook.asks?.slice(0, 5).forEach(([price, qty]) => {
+                html += `<div style="font-size: 0.9rem; display: flex; justify-content: space-between;">
+                    <span>${price}</span><span>${qty}</span>
+                </div>`;
+            });
+            html += '</div></div>';
+            
+            orderBookEl.innerHTML = html;
+        }
+        
+        // Refresh all data
+        async function refreshData() {
+            logActivity('Refreshing all data...', 'info');
+            await testConnection();
+            if (botRunning) {
+                await updateHFTData();
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', function() {
+            logActivity('Frontend loaded successfully', 'success');
+            testConnection();
+        });
+        
+        // Auto-refresh every 30 seconds
+        setInterval(refreshData, 30000);
+    </script>
+</body>
+</html>
