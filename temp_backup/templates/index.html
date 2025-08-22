@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HFT Backtesting System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f0f;
+            color: #ffffff;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: #1a1a1a;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #333;
+        }
+
+        .header h1 {
+            color: #00ff88;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .header .subtitle {
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .controls {
+            background: #1a1a1a;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            border: 1px solid #333;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            color: #ccc;
+            font-weight: 500;
+            min-width: 100px;
+        }
+
+        input, select, button {
+            padding: 0.5rem;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background: #2a2a2a;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+
+        button {
+            background: #00ff88;
+            color: #000;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #00cc6a;
+        }
+
+        button:disabled {
+            background: #444;
+            color: #888;
+            cursor: not-allowed;
+        }
+
+        .stop-btn {
+            background: #ff4757;
+            color: #fff;
+        }
+
+        .stop-btn:hover {
+            background: #ff3838;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid #333;
+        }
+
+        .card h3 {
+            color: #00ff88;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+        }
+
+        .metric {
+            text-align: center;
+            padding: 1rem;
+            background: #2a2a2a;
+            border-radius: 6px;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #00ff88;
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 0.25rem;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .status-idle { background: #888; }
+        .status-running { background: #00ff88; animation: pulse 1s infinite; }
+        .status-completed { background: #00ff88; }
+        .status-error { background: #ff4757; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00cc6a);
+            transition: width 0.3s ease;
+        }
+
+        .chart-container {
+            height: 300px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .order-book {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .order-side {
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 1rem;
+        }
+
+        .order-side h4 {
+            color: #ccc;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .asks h4 { color: #ff4757; }
+        .bids h4 { color: #00ff88; }
+
+        .order-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.25rem 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+        }
+
+        .order-price { color: #fff; }
+        .order-quantity { color: #888; }
+
+        .trades-log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #2a2a2a;
+            border-radius: 6px;
+            padding: 1rem;
+        }
+
+        .trade-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.25rem 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            border-bottom: 1px solid #333;
+        }
+
+        .trade-item:last-child {
+            border-bottom: none;
+        }
+
+        .trade-buy { color: #00ff88; }
+        .trade-sell { color: #ff4757; }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .loading {
+            opacity: 0.6;
+        }
+
+        .error {
+            color: #ff4757;
+            background: rgba(255, 71, 87, 0.1);
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #ff4757;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ HFT Backtesting System</h1>
+        <div class="subtitle">High-Frequency Trading Strategy Analysis Platform</div>
+    </div>
+
+    <div class="container">
+        <!-- Controls -->
+        <div class="controls">
+            <div class="control-group">
+                <label>Symbol:</label>
+                <select id="symbol">
+                    <optgroup label="🚀 Cryptocurrency">
+                        <option value="BTCUSDT">BTC/USDT</option>
+                        <option value="ETHUSDT">ETH/USDT</option>
+                    </optgroup>
+                    <optgroup label="🇮🇳 NSE Equities">
+                        <option value="RELIANCE">Reliance Industries</option>
+                        <option value="TCS">Tata Consultancy Services</option>
+                        <option value="HDFCBANK">HDFC Bank</option>
+                        <option value="INFY">Infosys</option>
+                        <option value="ITC">ITC Limited</option>
+                        <option value="SBIN">State Bank of India</option>
+                        <option value="BHARTIARTL">Bharti Airtel</option>
+                        <option value="KOTAKBANK">Kotak Mahindra Bank</option>
+                        <option value="LT">Larsen & Toubro</option>
+                        <option value="ASIANPAINT">Asian Paints</option>
+                    </optgroup>
+                </select>
+                
+                <label>Duration (min):</label>
+                <input type="number" id="duration" value="60" min="1" max="1440">
+                
+                <button id="startBtn" onclick="startBacktest()">Start Backtest</button>
+                <button id="stopBtn" onclick="stopBacktest()" disabled class="stop-btn">Stop</button>
+            </div>
+            
+            <div class="status">
+                <div class="status-dot status-idle" id="statusDot"></div>
+                <span id="statusText">Ready</span>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div class="dashboard">
+            <!-- Metrics -->
+            <div class="card">
+                <h3>📈 Performance Metrics</h3>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value" id="totalPnL">$0.00</div>
+                        <div class="metric-label">Total P&L</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="sharpeRatio">0.00</div>
+                        <div class="metric-label">Sharpe Ratio</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="maxDrawdown">$0.00</div>
+                        <div class="metric-label">Max Drawdown</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="totalTrades">0</div>
+                        <div class="metric-label">Total Trades</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="winRate">0%</div>
+                        <div class="metric-label">Win Rate</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="avgPosition">0.0000</div>
+                        <div class="metric-label">Avg Position</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- P&L Chart Placeholder -->
+            <div class="card">
+                <h3>📊 P&L Chart</h3>
+                <div class="chart-container" id="pnlChart">
+                    Real-time P&L visualization will appear here during backtest
+                </div>
+            </div>
+
+            <!-- Order Book -->
+            <div class="card">
+                <h3>📖 Order Book</h3>
+                <div class="order-book">
+                    <div class="order-side asks">
+                        <h4>Asks</h4>
+                        <div id="asksList">
+                            <div class="order-row">
+                                <span class="order-price">-</span>
+                                <span class="order-quantity">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="order-side bids">
+                        <h4>Bids</h4>
+                        <div id="bidsList">
+                            <div class="order-row">
+                                <span class="order-price">-</span>
+                                <span class="order-quantity">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 1rem; color: #888;">
+                    <div>Current Price: <span id="currentPrice" style="color: #00ff88;">$0.00</span></div>
+                    <div>Spread: <span id="currentSpread" style="color: #ccc;">$0.00</span></div>
+                </div>
+            </div>
+
+            <!-- Recent Trades -->
+            <div class="card">
+                <h3>💱 Recent Trades</h3>
+                <div class="trades-log" id="tradesLog">
+                    <div style="text-align: center; color: #888;">No trades yet</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let updateInterval;
+        let isRunning = false;
+
+        async function startBacktest() {
+            const symbol = document.getElementById('symbol').value;
+            const duration = parseInt(document.getElementById('duration').value);
+            
+            try {
+                const response = await fetch('/api/start-backtest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol, duration })
+                });
+                
+                if (response.ok) {
+                    isRunning = true;
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    
+                    // Start real-time updates
+                    updateInterval = setInterval(updateStatus, 1000);
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.error);
+                }
+            } catch (error) {
+                alert('Failed to start backtest: ' + error.message);
+            }
+        }
+
+        async function stopBacktest() {
+            try {
+                await fetch('/api/stop-backtest', { method: 'POST' });
+                stopUpdates();
+            } catch (error) {
+                console.error('Failed to stop backtest:', error);
+            }
+        }
+
+        function stopUpdates() {
+            isRunning = false;
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/backtest-status');
+                const data = await response.json();
+                
+                // Update status
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+                const progressFill = document.getElementById('progressFill');
+                
+                statusDot.className = `status-dot status-${data.status}`;
+                statusText.textContent = data.status.charAt(0).toUpperCase() + data.status.slice(1);
+                progressFill.style.width = data.progress + '%';
+                
+                // Update metrics
+                if (data.metrics) {
+                    document.getElementById('totalPnL').textContent = `$${data.metrics.total_pnl || 0}`;
+                    document.getElementById('sharpeRatio').textContent = data.metrics.sharpe_ratio || '0.00';
+                    document.getElementById('maxDrawdown').textContent = `$${data.metrics.max_drawdown || 0}`;
+                    document.getElementById('totalTrades').textContent = data.metrics.total_trades || 0;
+                    document.getElementById('winRate').textContent = `${data.metrics.win_rate || 0}%`;
+                    document.getElementById('avgPosition').textContent = data.metrics.avg_position || '0.0000';
+                }
+                
+                // Update order book
+                if (data.order_book) {
+                    updateOrderBook(data.order_book);
+                }
+                
+                // Update current price
+                if (data.current_price) {
+                    const symbol = document.getElementById('symbol').value;
+                    const currency = symbol.includes('USDT') ? '$' : '₹';
+                    document.getElementById('currentPrice').textContent = `${currency}${data.current_price.toFixed(2)}`;
+                    document.getElementById('currentSpread').textContent = `${currency}${data.spread.toFixed(2)}`;
+                }
+                
+                // Update trades
+                if (data.trades && data.trades.length > 0) {
+                    updateTrades(data.trades);
+                }
+                
+                // Update P&L chart placeholder
+                if (data.pnl && data.pnl.length > 0) {
+                    const lastPnL = data.pnl[data.pnl.length - 1];
+                    document.getElementById('pnlChart').innerHTML = 
+                        `<div>Latest P&L: $${lastPnL}<br>Data Points: ${data.pnl.length}</div>`;
+                }
+                
+                // Stop updates if completed or error
+                if (data.status === 'completed' || data.status === 'error') {
+                    stopUpdates();
+                }
+                
+            } catch (error) {
+                console.error('Failed to update status:', error);
+            }
+        }
+
+        function updateOrderBook(orderBook) {
+            const symbol = document.getElementById('symbol').value;
+            const currency = symbol.includes('USDT') ? '$' : '₹';
+            
+            // Update asks
+            const asksList = document.getElementById('asksList');
+            asksList.innerHTML = '';
+            if (orderBook.asks) {
+                orderBook.asks.forEach(([price, qty]) => {
+                    const row = document.createElement('div');
+                    row.className = 'order-row';
+                    row.innerHTML = `
+                        <span class="order-price">${currency}${price.toFixed(2)}</span>
+                        <span class="order-quantity">${qty.toFixed(3)}</span>
+                    `;
+                    asksList.appendChild(row);
+                });
+            }
+            
+            // Update bids
+            const bidsList = document.getElementById('bidsList');
+            bidsList.innerHTML = '';
+            if (orderBook.bids) {
+                orderBook.bids.forEach(([price, qty]) => {
+                    const row = document.createElement('div');
+                    row.className = 'order-row';
+                    row.innerHTML = `
+                        <span class="order-price">${currency}${price.toFixed(2)}</span>
+                        <span class="order-quantity">${qty.toFixed(3)}</span>
+                    `;
+                    bidsList.appendChild(row);
+                });
+            }
+        }
+
+        function updateTrades(trades) {
+            const tradesLog = document.getElementById('tradesLog');
+            tradesLog.innerHTML = '';
+            
+            const symbol = document.getElementById('symbol').value;
+            const currency = symbol.includes('USDT') ? '$' : '₹';
+            
+            // Show last 10 trades
+            const recentTrades = trades.slice(-10).reverse();
+            recentTrades.forEach(trade => {
+                const item = document.createElement('div');
+                item.className = `trade-item trade-${trade.side}`;
+                
+                const time = new Date(trade.timestamp).toLocaleTimeString();
+                item.innerHTML = `
+                    <span>${time}</span>
+                    <span>${trade.side.toUpperCase()}</span>
+                    <span>${currency}${trade.price.toFixed(2)}</span>
+                    <span>${trade.quantity.toFixed(4)}</span>
+                `;
+                tradesLog.appendChild(item);
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStatus();
+        });
+    </script>
+</body>
+</html>

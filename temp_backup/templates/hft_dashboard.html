@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jane Street-Inspired HFT Trading Bot | Live Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --bg-card: #1e1e1e;
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+            --text-muted: #666666;
+            --accent-primary: #00d4aa;
+            --accent-secondary: #0ea5e9;
+            --gain-green: #00ff88;
+            --loss-red: #ff4757;
+            --warning-orange: #ffa726;
+            --border-color: #333333;
+            --hover-bg: #2a2a2a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo i {
+            color: var(--accent-primary);
+            font-size: 1.5rem;
+        }
+
+        .logo h1 {
+            color: var(--text-primary);
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .bot-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--loss-red);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.running {
+            background: var(--gain-green);
+        }
+
+        .bot-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: var(--gain-green);
+            color: var(--bg-primary);
+        }
+
+        .btn-danger {
+            background: var(--loss-red);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Main Layout */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            grid-template-rows: auto 1fr;
+            height: calc(100vh - 60px);
+            gap: 1px;
+            background: var(--border-color);
+        }
+
+        /* Sidebar - Watchlist */
+        .sidebar {
+            background: var(--bg-secondary);
+            overflow-y: auto;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .nav-section {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .nav-title {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        .stock-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .stock-item:hover, .stock-item.selected {
+            background: var(--hover-bg);
+        }
+
+        .stock-info h4 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .stock-info span {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .stock-price {
+            text-align: right;
+        }
+
+        .price {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .change {
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .gain { color: var(--gain-green); }
+        .loss { color: var(--loss-red); }
+
+        /* Main Content */
+        .main-content {
+            background: var(--bg-primary);
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            overflow: hidden;
+        }
+
+        /* Performance Overview */
+        .performance-overview {
+            background: var(--bg-secondary);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .metric-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .metric-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Charts Section */
+        .charts-section {
+            padding: 1.5rem 2rem;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 1.5rem;
+            overflow: hidden;
+        }
+
+        .chart-container {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .chart-area {
+            height: 250px;
+            padding: 1rem;
+        }
+
+        .large-chart {
+            grid-row: span 2;
+        }
+
+        .large-chart .chart-area {
+            height: 520px;
+        }
+
+        /* Order Book */
+        .order-book-container {
+            height: 250px;
+            overflow-y: auto;
+        }
+
+        .depth-row {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            padding: 0.25rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+        }
+
+        .depth-row:hover {
+            background: var(--hover-bg);
+        }
+
+        .bid-side {
+            color: var(--gain-green);
+            text-align: right;
+            padding-right: 1rem;
+        }
+
+        .ask-side {
+            color: var(--loss-red);
+            text-align: left;
+            padding-left: 1rem;
+        }
+
+        .price-center {
+            text-align: center;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Right Panel */
+        .right-panel {
+            background: var(--bg-secondary);
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid var(--border-color);
+        }
+
+        /* Trading Controls */
+        .trading-controls {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .symbol-selector {
+            margin-bottom: 1rem;
+        }
+
+        .symbol-selector select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .bot-control-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* Recent Trades */
+        .trades-panel {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .trade-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.8rem;
+        }
+
+        .trade-side {
+            font-weight: 600;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .trade-buy {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--gain-green);
+        }
+
+        .trade-sell {
+            background: rgba(255, 71, 87, 0.2);
+            color: var(--loss-red);
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: var(--bg-secondary);
+            padding: 0.75rem 2rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .status-info {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Loading and animations */
+        .loading {
+            opacity: 0.6;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .dashboard {
+                grid-template-columns: 200px 1fr 280px;
+            }
+        }
+
+        @media (max-width: 968px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar, .right-panel {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <i class="fas fa-robot"></i>
+            <h1>Jane Street HFT Bot</h1>
+        </div>
+        
+        <div class="header-controls">
+            <div class="bot-status">
+                <div class="status-dot" id="botStatusDot"></div>
+                <span id="botStatusText">Stopped</span>
+            </div>
+            
+            <div class="bot-controls">
+                <button class="btn btn-primary" id="startBotBtn" onclick="startHFTBot()">
+                    <i class="fas fa-play"></i> Start Bot
+                </button>
+                <button class="btn btn-danger" id="stopBotBtn" onclick="stopHFTBot()" disabled>
+                    <i class="fas fa-stop"></i> Stop Bot
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div class="dashboard">
+        <!-- Sidebar - Watchlist -->
+        <div class="sidebar">
+            <div class="nav-section">
+                <div class="nav-title">NSE Stocks</div>
+            </div>
+            
+            <div class="stock-item selected" onclick="selectStock('RELIANCE')" data-symbol="RELIANCE">
+                <div class="stock-info">
+                    <h4>RELIANCE</h4>
+                    <span>NSE</span>
+                </div>
+                <div class="stock-price">
+                    <div class="price">₹2,847.50</div>
+                    <div class="change gain">+1.2%</div>
+                </div>
+            </div>
+
+            <div class="stock-item" onclick="selectStock('TCS')" data-symbol="TCS">
+                <div class="stock-info">
+                    <h4>TCS</h4>
+                    <span>NSE</span>
+                </div>
+                <div class="stock-price">
+                    <div class="price">₹4,234.80</div>
+                    <div class="change loss">-0.8%</div>
+                </div>
+            </div>
+
+            <div class="stock-item" onclick="selectStock('HDFCBANK')" data-symbol="HDFCBANK">
+                <div class="stock-info">
+                    <h4>HDFCBANK</h4>
+                    <span>NSE</span>
+                </div>
+                <div class="stock-price">
+                    <div class="price">₹1,673.25</div>
+                    <div class="change gain">+0.5%</div>
+                </div>
+            </div>
+
+            <div class="stock-item" onclick="selectStock('INFY')" data-symbol="INFY">
+                <div class="stock-info">
+                    <h4>INFY</h4>
+                    <span>NSE</span>
+                </div>
+                <div class="stock-price">
+                    <div class="price">₹1,867.40</div>
+                    <div class="change gain">+2.1%</div>
+                </div>
+            </div>
+
+            <div class="stock-item" onclick="selectStock('ITC')" data-symbol="ITC">
+                <div class="stock-info">
+                    <h4>ITC</h4>
+                    <span>NSE</span>
+                </div>
+                <div class="stock-price">
+                    <div class="price">₹487.60</div>
+                    <div class="change loss">-0.3%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Performance Overview -->
+            <div class="performance-overview">
+                <div class="metric-card">
+                    <div class="metric-value gain" id="totalPnL">₹0</div>
+                    <div class="metric-label">Total P&L</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="currentPosition">0</div>
+                    <div class="metric-label">Position</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="totalTrades">0</div>
+                    <div class="metric-label">Trades</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="winRate">0%</div>
+                    <div class="metric-label">Win Rate</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="sharpeRatio">0.00</div>
+                    <div class="metric-label">Sharpe Ratio</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="volatility">0.00%</div>
+                    <div class="metric-label">Volatility</div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="charts-section">
+                <!-- Price Chart -->
+                <div class="chart-container large-chart">
+                    <div class="chart-header">
+                        <div class="chart-title">Real-Time Price & P&L</div>
+                        <span id="currentSymbol">RELIANCE</span>
+                    </div>
+                    <div class="chart-area">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Order Book -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <div class="chart-title">L2 Order Book</div>
+                    </div>
+                    <div class="order-book-container" id="orderBookContainer">
+                        <!-- Order book data will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Volatility Chart -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <div class="chart-title">Volatility Clustering</div>
+                    </div>
+                    <div class="chart-area">
+                        <canvas id="volatilityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <div class="status-info">
+                    <div class="status-item">
+                        <i class="fas fa-clock"></i>
+                        <span id="currentTime"></span>
+                    </div>
+                    <div class="status-item">
+                        <i class="fas fa-signal"></i>
+                        <span>Latency: <span id="latency">1ms</span></span>
+                    </div>
+                    <div class="status-item">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Updates: <span id="updateCount">0</span></span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <span>Market: <span id="marketStatus">OPEN</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="right-panel">
+            <!-- Trading Controls -->
+            <div class="trading-controls">
+                <div class="symbol-selector">
+                    <div class="section-title">Trading Symbol</div>
+                    <select id="tradingSymbol" onchange="changeSymbol()">
+                        <option value="RELIANCE">RELIANCE</option>
+                        <option value="TCS">TCS</option>
+                        <option value="HDFCBANK">HDFCBANK</option>
+                        <option value="INFY">INFY</option>
+                        <option value="ITC">ITC</option>
+                    </select>
+                </div>
+
+                <div class="bot-control-section">
+                    <div class="section-title">Bot Parameters</div>
+                    <div style="display: grid; gap: 0.75rem; font-size: 0.8rem;">
+                        <div>Max Position: <span id="maxPosition">₹10,00,000</span></div>
+                        <div>Spread: <span id="currentSpread">₹0.05</span></div>
+                        <div>Active Orders: <span id="activeOrders">0</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Trades -->
+            <div class="trades-panel">
+                <div class="section-title">Recent Trades</div>
+                <div id="recentTrades">
+                    <!-- Trades will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSymbol = 'RELIANCE';
+        let updateInterval;
+        let updateCount = 0;
+        let isRunning = false;
+        
+        // Chart instances
+        let priceChart = null;
+        let volatilityChart = null;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+            updateTime();
+            setInterval(updateTime, 1000);
+            startStatusUpdates();
+        });
+
+        function initCharts() {
+            // Price Chart
+            const priceCtx = document.getElementById('priceChart').getContext('2d');
+            priceChart = new Chart(priceCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Price',
+                        data: [],
+                        borderColor: '#00d4aa',
+                        backgroundColor: 'rgba(0, 212, 170, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'P&L',
+                        data: [],
+                        borderColor: '#00ff88',
+                        backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#ffffff' }
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            ticks: { color: '#888888' },
+                            grid: { color: '#333333' }
+                        },
+                        y: { 
+                            ticks: { color: '#888888' },
+                            grid: { color: '#333333' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            ticks: { color: '#888888' },
+                            grid: { drawOnChartArea: false }
+                        }
+                    },
+                    animation: { duration: 0 }
+                }
+            });
+
+            // Volatility Chart
+            const volCtx = document.getElementById('volatilityChart').getContext('2d');
+            volatilityChart = new Chart(volCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Volatility',
+                        data: [],
+                        borderColor: '#ffa726',
+                        backgroundColor: 'rgba(255, 167, 38, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#ffffff' }
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            ticks: { color: '#888888' },
+                            grid: { color: '#333333' }
+                        },
+                        y: { 
+                            ticks: { color: '#888888' },
+                            grid: { color: '#333333' }
+                        }
+                    },
+                    animation: { duration: 0 }
+                }
+            });
+        }
+
+        async function startHFTBot() {
+            try {
+                const response = await fetch('/api/hft/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol: currentSymbol })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    isRunning = true;
+                    updateBotStatus('RUNNING');
+                    document.getElementById('startBotBtn').disabled = true;
+                    document.getElementById('stopBotBtn').disabled = false;
+                    
+                    // Start real-time updates with faster refresh for smoother charts
+                    updateInterval = setInterval(updateDashboard, 50); // 50ms updates for smoothness
+                } else {
+                    alert('Failed to start bot: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error starting bot: ' + error.message);
+            }
+        }
+
+        async function stopHFTBot() {
+            try {
+                const response = await fetch('/api/hft/stop', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    isRunning = false;
+                    updateBotStatus('STOPPED');
+                    document.getElementById('startBotBtn').disabled = false;
+                    document.getElementById('stopBotBtn').disabled = true;
+                    
+                    if (updateInterval) {
+                        clearInterval(updateInterval);
+                    }
+                }
+            } catch (error) {
+                console.error('Error stopping bot:', error);
+            }
+        }
+
+        function updateBotStatus(status) {
+            const statusDot = document.getElementById('botStatusDot');
+            const statusText = document.getElementById('botStatusText');
+            
+            statusDot.className = 'status-dot';
+            if (status === 'RUNNING') {
+                statusDot.classList.add('running');
+                statusText.textContent = 'Running';
+            } else {
+                statusText.textContent = 'Stopped';
+            }
+        }
+
+        async function updateDashboard() {
+            try {
+                const startTime = performance.now();
+                const response = await fetch('/api/hft/status');
+                const data = await response.json();
+                
+                if (data.status === 'RUNNING' && data.data) {
+                    updateMetrics(data.data.performance);
+                    updateCharts(data.data.charts);
+                    updateOrderBook(data.data.order_book);
+                    updateRecentTrades(data.data.recent_trades);
+                    
+                    updateCount++;
+                    document.getElementById('updateCount').textContent = updateCount;
+                    
+                    // Show actual latency
+                    const latency = Math.round(performance.now() - startTime);
+                    document.getElementById('latency').textContent = `${latency}ms`;
+                }
+            } catch (error) {
+                console.error('Error updating dashboard:', error);
+                document.getElementById('latency').textContent = 'Error';
+            }
+        }
+
+        function updateMetrics(performance) {
+            if (!performance) return;
+            
+            document.getElementById('totalPnL').textContent = `₹${performance.total_pnl?.toFixed(2) || 0}`;
+            document.getElementById('currentPosition').textContent = performance.current_position || 0;
+            document.getElementById('totalTrades').textContent = performance.total_trades || 0;
+            document.getElementById('winRate').textContent = `${performance.win_rate?.toFixed(1) || 0}%`;
+            document.getElementById('sharpeRatio').textContent = performance.sharpe_ratio?.toFixed(2) || '0.00';
+            document.getElementById('volatility').textContent = `${(performance.volatility * 100)?.toFixed(2) || 0}%`;
+            document.getElementById('activeOrders').textContent = performance.active_orders || 0;
+        }
+
+        function updateCharts(charts) {
+            if (!charts) return;
+            
+            // Update price chart
+            if (charts.price_history && charts.pnl_history && charts.timestamps) {
+                const maxPoints = 50; // Show last 50 points
+                const labels = charts.timestamps.slice(-maxPoints).map(ts => 
+                    new Date(ts * 1000).toLocaleTimeString()
+                );
+                
+                priceChart.data.labels = labels;
+                priceChart.data.datasets[0].data = charts.price_history.slice(-maxPoints);
+                priceChart.data.datasets[1].data = charts.pnl_history.slice(-maxPoints);
+                priceChart.update('none');
+            }
+            
+            // Update volatility chart
+            if (charts.volatility_history && charts.timestamps) {
+                const maxPoints = 50;
+                const labels = charts.timestamps.slice(-maxPoints).map(ts => 
+                    new Date(ts * 1000).toLocaleTimeString()
+                );
+                
+                volatilityChart.data.labels = labels;
+                volatilityChart.data.datasets[0].data = charts.volatility_history.slice(-maxPoints);
+                volatilityChart.update('none');
+            }
+        }
+
+        function updateOrderBook(orderBook) {
+            if (!orderBook) return;
+            
+            const container = document.getElementById('orderBookContainer');
+            let html = '';
+            
+            // Show asks (top to bottom)
+            if (orderBook.asks) {
+                orderBook.asks.slice(0, 10).reverse().forEach(([price, qty]) => {
+                    html += `
+                        <div class="depth-row">
+                            <div class="bid-side"></div>
+                            <div class="price-center">₹${price.toFixed(2)}</div>
+                            <div class="ask-side">${qty}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Spread indicator
+            html += `
+                <div class="depth-row" style="background: rgba(0, 212, 170, 0.1);">
+                    <div class="bid-side"></div>
+                    <div class="price-center" style="color: var(--accent-primary);">SPREAD</div>
+                    <div class="ask-side"></div>
+                </div>
+            `;
+            
+            // Show bids (top to bottom)
+            if (orderBook.bids) {
+                orderBook.bids.slice(0, 10).forEach(([price, qty]) => {
+                    html += `
+                        <div class="depth-row">
+                            <div class="bid-side">${qty}</div>
+                            <div class="price-center">₹${price.toFixed(2)}</div>
+                            <div class="ask-side"></div>
+                        </div>
+                    `;
+                });
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function updateRecentTrades(trades) {
+            if (!trades) return;
+            
+            const container = document.getElementById('recentTrades');
+            let html = '';
+            
+            trades.slice(-10).reverse().forEach(trade => {
+                const time = new Date(trade.timestamp * 1000).toLocaleTimeString();
+                html += `
+                    <div class="trade-item">
+                        <div>
+                            <div class="trade-side trade-${trade.side.toLowerCase()}">${trade.side}</div>
+                            <div>${time}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div>₹${trade.price.toFixed(2)}</div>
+                            <div style="color: #888;">${trade.quantity}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html || '<div style="text-align: center; color: #888;">No trades yet</div>';
+        }
+
+        function selectStock(symbol) {
+            currentSymbol = symbol;
+            document.getElementById('currentSymbol').textContent = symbol;
+            document.getElementById('tradingSymbol').value = symbol;
+            
+            // Update selected state
+            document.querySelectorAll('.stock-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            document.querySelector(`[data-symbol="${symbol}"]`).classList.add('selected');
+            
+            // If bot is running, restart with new symbol
+            if (isRunning) {
+                stopHFTBot().then(() => {
+                    setTimeout(() => startHFTBot(), 500);
+                });
+            }
+        }
+
+        function changeSymbol() {
+            const symbol = document.getElementById('tradingSymbol').value;
+            selectStock(symbol);
+        }
+
+        function updateTime() {
+            document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
+        }
+
+        function startStatusUpdates() {
+            // Check bot status periodically
+            setInterval(async () => {
+                try {
+                    const response = await fetch('/api/hft/status');
+                    const data = await response.json();
+                    updateBotStatus(data.status);
+                } catch (error) {
+                    console.error('Error checking bot status:', error);
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

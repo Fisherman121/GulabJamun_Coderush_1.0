@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced HFT Analytics | Professional Charts</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1/dist/chartjs-adapter-moment.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --bg-card: #1e1e1e;
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+            --text-muted: #666666;
+            --accent-primary: #00d4aa;
+            --gain-green: #00ff88;
+            --loss-red: #ff4757;
+            --warning-orange: #ffa726;
+            --border-color: #333333;
+            --hover-bg: #2a2a2a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo i {
+            color: var(--accent-primary);
+            font-size: 1.5rem;
+        }
+
+        .logo h1 {
+            color: var(--text-primary);
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: var(--hover-bg);
+            color: var(--accent-primary);
+        }
+
+        .controls-bar {
+            background: var(--bg-tertiary);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .symbol-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .symbol-select {
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .time-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .time-btn {
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+        }
+
+        .time-btn:hover, .time-btn.active {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: 400px 300px 300px;
+            gap: 1rem;
+            padding: 2rem;
+            height: calc(100vh - 140px);
+        }
+
+        .chart-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .chart-header {
+            background: var(--bg-tertiary);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .chart-info {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .chart-container {
+            padding: 1rem;
+            height: calc(100% - 60px);
+            position: relative;
+        }
+
+        .large-chart {
+            grid-row: span 2;
+        }
+
+        .wide-chart {
+            grid-column: span 2;
+        }
+
+        .metric-overlay {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            z-index: 10;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-label {
+            color: var(--text-muted);
+        }
+
+        .metric-value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .status-bar {
+            background: var(--bg-secondary);
+            padding: 0.75rem 2rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .loading-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--text-muted);
+        }
+
+        .loading-indicator i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Chart styling */
+        .chart-canvas {
+            background: transparent !important;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: repeat(auto-fit, 300px);
+            }
+            
+            .large-chart, .wide-chart {
+                grid-row: span 1;
+                grid-column: span 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <i class="fas fa-chart-line"></i>
+            <h1>Advanced HFT Analytics</h1>
+        </div>
+        
+        <div class="nav-links">
+            <a href="/hft" class="nav-link">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a href="/advanced_charts" class="nav-link active">
+                <i class="fas fa-chart-area"></i> Advanced Charts
+            </a>
+            <a href="/" class="nav-link">
+                <i class="fas fa-home"></i> Trading
+            </a>
+        </div>
+    </div>
+
+    <!-- Controls Bar -->
+    <div class="controls-bar">
+        <div class="symbol-controls">
+            <label>Symbol:</label>
+            <select class="symbol-select" id="symbolSelect" onchange="changeSymbol()">
+                <option value="RELIANCE">RELIANCE</option>
+                <option value="TCS">TCS</option>
+                <option value="HDFCBANK">HDFCBANK</option>
+                <option value="INFY">INFY</option>
+                <option value="ITC">ITC</option>
+            </select>
+            
+            <div class="status-item">
+                <i class="fas fa-circle" id="dataStatus" style="color: var(--loss-red);"></i>
+                <span id="dataStatusText">Disconnected</span>
+            </div>
+        </div>
+
+        <div class="time-controls">
+            <button class="time-btn" onclick="setTimeframe('1m')">1M</button>
+            <button class="time-btn" onclick="setTimeframe('5m')">5M</button>
+            <button class="time-btn active" onclick="setTimeframe('15m')">15M</button>
+            <button class="time-btn" onclick="setTimeframe('1h')">1H</button>
+            <button class="time-btn" onclick="setTimeframe('1d')">1D</button>
+        </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="charts-grid">
+        <!-- Main Price Chart -->
+        <div class="chart-panel large-chart">
+            <div class="chart-header">
+                <div class="chart-title">Price Action & Volume</div>
+                <div class="chart-info" id="priceInfo">Loading...</div>
+            </div>
+            <div class="chart-container">
+                <div class="metric-overlay" id="priceMetrics">
+                    <div class="metric-row">
+                        <span class="metric-label">Last:</span>
+                        <span class="metric-value" id="lastPrice">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Change:</span>
+                        <span class="metric-value" id="priceChange">-</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Volume:</span>
+                        <span class="metric-value" id="volume">-</span>
+                    </div>
+                </div>
+                <canvas id="priceChart" class="chart-canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- P&L Chart -->
+        <div class="chart-panel">
+            <div class="chart-header">
+                <div class="chart-title">Real-time P&L</div>
+                <div class="chart-info" id="pnlInfo">₹0.00</div>
+            </div>
+            <div class="chart-container">
+                <canvas id="pnlChart" class="chart-canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Volatility Chart -->
+        <div class="chart-panel">
+            <div class="chart-header">
+                <div class="chart-title">Volatility Clustering</div>
+                <div class="chart-info" id="volInfo">0.00%</div>
+            </div>
+            <div class="chart-container">
+                <canvas id="volatilityChart" class="chart-canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Order Flow Chart -->
+        <div class="chart-panel wide-chart">
+            <div class="chart-header">
+                <div class="chart-title">Order Flow & Market Depth</div>
+                <div class="chart-info" id="flowInfo">Real-time</div>
+            </div>
+            <div class="chart-container">
+                <canvas id="orderFlowChart" class="chart-canvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="status-item">
+            <i class="fas fa-clock"></i>
+            <span id="currentTime"></span>
+        </div>
+        <div class="status-item">
+            <span>Updates: <span id="updateCount">0</span></span>
+        </div>
+        <div class="status-item">
+            <span>Latency: <span id="latency">0ms</span></span>
+        </div>
+        <div class="status-item">
+            <span>FPS: <span id="fps">0</span></span>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let charts = {};
+        let currentSymbol = 'RELIANCE';
+        let currentTimeframe = '15m';
+        let updateInterval;
+        let updateCount = 0;
+        let lastUpdateTime = 0;
+        let frameCount = 0;
+        let fpsInterval;
+
+        // Chart configurations for Chart.js v3.9.1
+        const chartConfigs = {
+            price: {
+                type: 'line',
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'second' },
+                            ticks: { color: '#666666', maxTicksLimit: 10 },
+                            grid: { color: '#333333' }
+                        },
+                        y: {
+                            ticks: { color: '#666666' },
+                            grid: { color: '#333333' }
+                        }
+                    },
+                    elements: { point: { radius: 0 } },
+                    animation: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            },
+            pnl: {
+                type: 'line',
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            ticks: { color: '#666666', maxTicksLimit: 6 },
+                            grid: { color: '#333333' }
+                        },
+                        y: {
+                            ticks: { 
+                                color: '#666666',
+                                callback: function(value) {
+                                    return '₹' + value.toFixed(2);
+                                }
+                            },
+                            grid: { color: '#333333' }
+                        }
+                    },
+                    elements: { point: { radius: 0 } },
+                    animation: false
+                }
+            },
+            volatility: {
+                type: 'line',
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            ticks: { color: '#666666', maxTicksLimit: 6 },
+                            grid: { color: '#333333' }
+                        },
+                        y: {
+                            ticks: { 
+                                color: '#666666',
+                                callback: function(value) {
+                                    return (value * 100).toFixed(2) + '%';
+                                }
+                            },
+                            grid: { color: '#333333' }
+                        }
+                    },
+                    elements: { point: { radius: 0 } },
+                    animation: false
+                }
+            },
+            orderFlow: {
+                type: 'bar',
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true, labels: { color: '#ffffff' } } },
+                    scales: {
+                        x: {
+                            ticks: { color: '#666666' },
+                            grid: { color: '#333333' }
+                        },
+                        y: {
+                            ticks: { color: '#666666' },
+                            grid: { color: '#333333' }
+                        }
+                    },
+                    animation: false
+                }
+            }
+        };
+
+        // Initialize charts
+        function initCharts() {
+            // Check if Chart.js is loaded
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js not loaded properly');
+                // Show error message
+                document.querySelectorAll('.chart-container').forEach(container => {
+                    container.innerHTML = '<div style="color: #ff4757; text-align: center; padding: 2rem;">Chart.js failed to load. Please refresh the page.</div>';
+                });
+                return;
+            }
+
+            // Price Chart
+            const priceCtx = document.getElementById('priceChart').getContext('2d');
+            charts.price = new Chart(priceCtx, {
+                ...chartConfigs.price,
+                data: {
+                    datasets: [{
+                        label: 'Price',
+                        data: [],
+                        borderColor: '#00d4aa',
+                        backgroundColor: 'rgba(0, 212, 170, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1
+                    }]
+                }
+            });
+
+            // P&L Chart
+            const pnlCtx = document.getElementById('pnlChart').getContext('2d');
+            charts.pnl = new Chart(pnlCtx, {
+                ...chartConfigs.pnl,
+                data: {
+                    datasets: [{
+                        label: 'P&L',
+                        data: [],
+                        borderColor: '#00ff88',
+                        backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                }
+            });
+
+            // Volatility Chart
+            const volCtx = document.getElementById('volatilityChart').getContext('2d');
+            charts.volatility = new Chart(volCtx, {
+                ...chartConfigs.volatility,
+                data: {
+                    datasets: [{
+                        label: 'Volatility',
+                        data: [],
+                        borderColor: '#ffa726',
+                        backgroundColor: 'rgba(255, 167, 38, 0.2)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                }
+            });
+
+            // Order Flow Chart
+            const flowCtx = document.getElementById('orderFlowChart').getContext('2d');
+            charts.orderFlow = new Chart(flowCtx, {
+                ...chartConfigs.orderFlow,
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Buy Volume',
+                        data: [],
+                        backgroundColor: 'rgba(0, 255, 136, 0.7)',
+                        borderColor: '#00ff88',
+                        borderWidth: 1
+                    }, {
+                        label: 'Sell Volume',
+                        data: [],
+                        backgroundColor: 'rgba(255, 71, 87, 0.7)',
+                        borderColor: '#ff4757',
+                        borderWidth: 1
+                    }]
+                }
+            });
+        }
+
+        // Update charts with new data
+        async function updateCharts() {
+            try {
+                const currentTime = Date.now();
+                const response = await fetch('/api/hft/status');
+                const data = await response.json();
+
+                if ((data.status === 'RUNNING' || data.status === 'STOPPED') && data.data && data.data.charts) {
+                    updateDataStatus(data.status === 'RUNNING' ? 'connected' : 'paused');
+                    
+                    const charts_data = data.data.charts;
+                    const performance = data.data.performance;
+                    
+                    // Update price chart
+                    if (charts_data.price_history && charts_data.timestamps) {
+                        updatePriceChart(charts_data.price_history, charts_data.timestamps);
+                        updatePriceMetrics(data.data.market_data);
+                    }
+                    
+                    // Update P&L chart
+                    if (charts_data.pnl_history && charts_data.timestamps) {
+                        updatePnLChart(charts_data.pnl_history, charts_data.timestamps);
+                        document.getElementById('pnlInfo').textContent = 
+                            `₹${performance?.total_pnl?.toFixed(2) || '0.00'}`;
+                    }
+                    
+                    // Update volatility chart
+                    if (charts_data.volatility_history && charts_data.timestamps) {
+                        updateVolatilityChart(charts_data.volatility_history, charts_data.timestamps);
+                        document.getElementById('volInfo').textContent = 
+                            `${((performance?.volatility || 0) * 100).toFixed(2)}%`;
+                    }
+                    
+                    // Update order flow chart
+                    if (data.data.recent_trades) {
+                        updateOrderFlowChart(data.data.recent_trades);
+                    }
+                    
+                    // Update counters
+                    updateCount++;
+                    document.getElementById('updateCount').textContent = updateCount;
+                    
+                    // Calculate latency
+                    const latency = Date.now() - currentTime;
+                    document.getElementById('latency').textContent = `${latency}ms`;
+                } else {
+                    updateDataStatus('disconnected');
+                }
+                
+                frameCount++;
+            } catch (error) {
+                console.error('Error updating charts:', error);
+                updateDataStatus('error');
+            }
+        }
+
+        function updatePriceChart(priceData, timestamps) {
+            const maxPoints = 200; // More points for smoother charts
+            const data = priceData.slice(-maxPoints).map((price, index) => ({
+                x: new Date(timestamps[timestamps.length - maxPoints + index] * 1000),
+                y: price
+            }));
+            
+            charts.price.data.datasets[0].data = data;
+            charts.price.update('none');
+        }
+
+        function updatePnLChart(pnlData, timestamps) {
+            const maxPoints = 200;
+            const data = pnlData.slice(-maxPoints).map((pnl, index) => ({
+                x: new Date(timestamps[timestamps.length - maxPoints + index] * 1000),
+                y: pnl
+            }));
+            
+            charts.pnl.data.datasets[0].data = data;
+            charts.pnl.update('none');
+        }
+
+        function updateVolatilityChart(volData, timestamps) {
+            const maxPoints = 200;
+            const data = volData.slice(-maxPoints).map((vol, index) => ({
+                x: new Date(timestamps[timestamps.length - maxPoints + index] * 1000),
+                y: vol
+            }));
+            
+            charts.volatility.data.datasets[0].data = data;
+            charts.volatility.update('none');
+        }
+
+        function updateOrderFlowChart(trades) {
+            // Aggregate trades by time buckets
+            const buckets = {};
+            const now = Date.now();
+            const bucketSize = 5000; // 5 second buckets
+            
+            trades.forEach(trade => {
+                const bucket = Math.floor((trade.timestamp * 1000) / bucketSize) * bucketSize;
+                if (!buckets[bucket]) {
+                    buckets[bucket] = { buy: 0, sell: 0 };
+                }
+                
+                if (trade.side === 'BUY') {
+                    buckets[bucket].buy += trade.quantity;
+                } else {
+                    buckets[bucket].sell += trade.quantity;
+                }
+            });
+            
+            const sortedBuckets = Object.keys(buckets).sort().slice(-20); // Last 20 buckets
+            const labels = sortedBuckets.map(bucket => 
+                new Date(parseInt(bucket)).toLocaleTimeString()
+            );
+            const buyData = sortedBuckets.map(bucket => buckets[bucket].buy);
+            const sellData = sortedBuckets.map(bucket => buckets[bucket].sell);
+            
+            charts.orderFlow.data.labels = labels;
+            charts.orderFlow.data.datasets[0].data = buyData;
+            charts.orderFlow.data.datasets[1].data = sellData;
+            charts.orderFlow.update('none');
+        }
+
+        function updatePriceMetrics(marketData) {
+            if (!marketData) return;
+            
+            document.getElementById('lastPrice').textContent = `₹${marketData.price?.toFixed(2) || '0.00'}`;
+            document.getElementById('volume').textContent = marketData.volume?.toLocaleString() || '0';
+            
+            // Calculate price change (mock for now)
+            const change = Math.random() * 2 - 1; // -1 to 1
+            const changeElement = document.getElementById('priceChange');
+            changeElement.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+            changeElement.style.color = change >= 0 ? '#00ff88' : '#ff4757';
+        }
+
+        function updateDataStatus(status) {
+            const statusDot = document.getElementById('dataStatus');
+            const statusText = document.getElementById('dataStatusText');
+            
+            switch(status) {
+                case 'connected':
+                    statusDot.style.color = '#00ff88';
+                    statusText.textContent = 'Live Data';
+                    break;
+                case 'paused':
+                    statusDot.style.color = '#ffa726';
+                    statusText.textContent = 'Bot Stopped';
+                    break;
+                case 'disconnected':
+                    statusDot.style.color = '#ff4757';
+                    statusText.textContent = 'Disconnected';
+                    break;
+                case 'error':
+                    statusDot.style.color = '#ffa726';
+                    statusText.textContent = 'Error';
+                    break;
+            }
+        }
+
+        function changeSymbol() {
+            currentSymbol = document.getElementById('symbolSelect').value;
+            // Reset charts
+            Object.values(charts).forEach(chart => {
+                chart.data.datasets.forEach(dataset => {
+                    dataset.data = [];
+                });
+                chart.update();
+            });
+            updateCount = 0;
+        }
+
+        function setTimeframe(timeframe) {
+            currentTimeframe = timeframe;
+            document.querySelectorAll('.time-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Adjust chart time axis based on timeframe
+            const timeUnit = {
+                '1m': 'second',
+                '5m': 'minute', 
+                '15m': 'minute',
+                '1h': 'hour',
+                '1d': 'day'
+            }[timeframe] || 'minute';
+            
+            Object.values(charts).forEach(chart => {
+                if (chart.options.scales.x && chart.options.scales.x.type === 'time') {
+                    chart.options.scales.x.time.unit = timeUnit;
+                    chart.update();
+                }
+            });
+        }
+
+        function updateTime() {
+            document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
+        }
+
+        function calculateFPS() {
+            document.getElementById('fps').textContent = frameCount;
+            frameCount = 0;
+        }
+
+        // Initialize everything
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+            updateTime();
+            setInterval(updateTime, 1000);
+            
+            // Start real-time updates at 50ms intervals for smooth charts
+            updateInterval = setInterval(updateCharts, 50);
+            
+            // Calculate FPS
+            fpsInterval = setInterval(calculateFPS, 1000);
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (updateInterval) clearInterval(updateInterval);
+            if (fpsInterval) clearInterval(fpsInterval);
+        });
+    </script>
+</body>
+</html>
