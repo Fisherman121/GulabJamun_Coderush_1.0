@@ -278,7 +278,7 @@ Installation & Setup
       cd mithai-cap-trading
 
 2. **Install Python Dependencies**
-   .. code-block:: console
+.. code-block:: console
 
       pip install -r requirements.txt
 
@@ -289,7 +289,7 @@ Installation & Setup
       pip install -e . --user
 
 4. **Launch the Platform**
-   .. code-block:: console
+.. code-block:: console
 
       python app.py
 
