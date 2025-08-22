@@ -1,0 +1,222 @@
+@startuml HFT_Technical_Architecture
+!theme aws-orange
+
+title High-Frequency Trading System - Technical Architecture & Data Flow
+
+skinparam backgroundColor #0a0a0a
+skinparam defaultTextColor #ffffff
+skinparam packageBorderColor #333333
+skinparam packageBackgroundColor #1a1a1a
+skinparam componentBorderColor #666666
+skinparam componentBackgroundColor #1e1e1e
+skinparam arrowColor #00d4aa
+skinparam arrowFontColor #ffffff
+
+' Define latency zones
+package "Ultra-Low Latency Zone (<1ms)" as ULL {
+  
+  rectangle "Market Data Ingestion" as MDI #ff6b6b {
+    component "FIX Protocol Handler" as FIX
+    component "WebSocket Manager" as WSM
+    component "Binary Data Parser" as BDP
+    component "Data Normalizer" as DN
+  }
+  
+  rectangle "Trading Engine Core" as TEC #00ff88 {
+    component "Order Matching Engine" as OME
+    component "Position Calculator" as PC
+    component "Risk Validator" as RV
+    component "Quote Engine" as QE
+  }
+  
+  rectangle "Order Execution" as OE #ffa726 {
+    component "Smart Order Router" as SOR
+    component "Fill Simulator" as FS2
+    component "Latency Optimizer" as LO
+    component "Exchange Connector" as EC
+  }
+}
+
+' Define analytics zone
+package "Real-Time Analytics Zone (1-10ms)" as RAZ {
+  
+  rectangle "Market Microstructure" as MM #0ea5e9 {
+    component "L2 Book Reconstructor" as L2BR
+    component "Tick-by-Tick Processor" as TTP
+    component "Market Impact Model" as MIM
+    component "Liquidity Analyzer" as LA
+  }
+  
+  rectangle "Predictive Models" as PM3 #ff9ff3 {
+    component "GARCH(1,1) Model" as GARCH
+    component "Kalman Filter" as KF
+    component "Machine Learning Engine" as MLE
+    component "Signal Generator" as SG
+  }
+  
+  rectangle "Risk Analytics" as RA2 #ff4757 {
+    component "VaR Calculator" as VARC
+    component "Greeks Calculator" as GC
+    component "Correlation Monitor" as CM
+    component "Stress Tester" as ST
+  }
+}
+
+' Define strategy zone
+package "Strategy Zone (10-50ms)" as SZ {
+  
+  rectangle "Market Making Strategy" as MMS2 #00d4aa {
+    component "Bid-Ask Spread Manager" as BASM
+    component "Inventory Risk Manager" as IRM
+    component "Adverse Selection Filter" as ASF
+    component "Quote Optimization" as QO
+  }
+  
+  rectangle "Portfolio Management" as PM4 #ffa502 {
+    component "Multi-Asset Coordinator" as MAC
+    component "Cross-Asset Hedging" as CAH
+    component "Capital Allocation" as CA
+    component "Exposure Monitor" as EM
+  }
+}
+
+' Define persistence zone
+package "Data Persistence Zone (>50ms)" as DPZ {
+  
+  rectangle "Time Series Storage" as TSS #666666 {
+    database "InfluxDB Cluster" as IDB
+    database "Redis Cache" as RC
+    database "PostgreSQL" as PG
+  }
+  
+  rectangle "Historical Analytics" as HA #888888 {
+    component "Backtesting Engine" as BE
+    component "Performance Attribution" as PA2
+    component "Compliance Reporter" as CR
+    component "Audit Trail" as AT
+  }
+}
+
+' Define web interface
+package "Web Interface Layer" as WIL {
+  
+  rectangle "Frontend Applications" as FA {
+    component "React Dashboard" as RD #00d4aa
+    component "Chart.js Visualizations" as CJV #0ea5e9
+    component "WebSocket Client" as WSC #ffa726
+    component "Real-time Updates" as RTU #ff9ff3
+  }
+  
+  rectangle "API Gateway" as AG {
+    component "Flask REST API" as FRA #ff6b6b
+    component "Authentication Service" as AS #ffa502
+    component "Rate Limiter" as RLM #ff4757
+    component "Load Balancer" as LB #00ff88
+  }
+}
+
+' Data Flow Arrows with Latency Labels
+FIX --> DN : "Raw Market Data\n<100μs"
+WSM --> DN : "WebSocket Stream\n<200μs"
+BDP --> DN : "Binary Feeds\n<50μs"
+
+DN --> OME : "Normalized Data\n<500μs"
+DN --> L2BR : "Order Book Updates\n<1ms"
+
+OME --> PC : "Trade Events\n<100μs"
+PC --> RV : "Position Updates\n<200μs"
+RV --> QE : "Risk Cleared\n<300μs"
+
+QE --> SOR : "Quote Instructions\n<500μs"
+SOR --> FS2 : "Order Routing\n<1ms"
+FS2 --> EC : "Execution\n<2ms"
+
+L2BR --> TTP : "Book Reconstruction\n2-5ms"
+TTP --> MIM : "Tick Processing\n5-10ms"
+MIM --> LA : "Impact Analysis\n10-20ms"
+
+LA --> GARCH : "Liquidity Metrics\n20ms"
+GARCH --> KF : "Volatility Data\n30ms"
+KF --> MLE : "Filtered Signals\n40ms"
+MLE --> SG : "ML Predictions\n50ms"
+
+SG --> BASM : "Trading Signals\n10ms"
+BASM --> IRM : "Spread Updates\n20ms"
+IRM --> ASF : "Inventory Data\n30ms"
+ASF --> QO : "Risk Filtered\n40ms"
+
+QO --> MAC : "Optimized Quotes\n50ms"
+MAC --> CAH : "Multi-Asset\n100ms"
+CAH --> CA : "Hedge Instructions\n150ms"
+CA --> EM : "Capital Updates\n200ms"
+
+' Risk monitoring flows
+PC --> VARC : "Position Data\n5ms"
+VARC --> GC : "VaR Metrics\n10ms"
+GC --> CM : "Greeks Data\n15ms"
+CM --> ST : "Correlation\n20ms"
+
+ST --> RV : "Risk Alerts\n<1ms"
+
+' Persistence flows
+OME --> IDB : "Trade Data\n100ms"
+PC --> RC : "Live Positions\n50ms"
+QE --> PG : "Quote History\n200ms"
+
+IDB --> BE : "Historical Data\n>1s"
+BE --> PA2 : "Backtest Results\n>5s"
+PA2 --> CR : "Performance Data\n>10s"
+CR --> AT : "Compliance\n>30s"
+
+' Web interface flows
+RC --> FRA : "Live Data\n100ms"
+IDB --> FRA : "Historical\n500ms"
+FRA --> WSC : "WebSocket\n200ms"
+WSC --> RTU : "Real-time\n50ms"
+RTU --> CJV : "Chart Updates\n100ms"
+CJV --> RD : "Visualization\n50ms"
+
+' Authentication and security
+RD --> AS : "Auth Requests"
+AS --> RLM : "Rate Control"
+RLM --> LB : "Load Balanced"
+LB --> FRA : "API Calls"
+
+' System monitoring
+OME --> LO : "Latency Metrics"
+LO --> EM : "Performance Data"
+
+note top of ULL : **Ultra-Low Latency Zone**\n• FPGA-accelerated processing\n• Kernel bypass networking\n• Lock-free data structures\n• Hardware timestamping
+
+note right of RAZ : **Analytics Pipeline**\n• Real-time market microstructure\n• GARCH volatility clustering\n• Machine learning predictions\n• Risk metric calculations
+
+note bottom of SZ : **Strategy Engine**\n• Jane Street-style market making\n• Multi-asset coordination\n• Dynamic inventory management\n• Adverse selection protection
+
+note left of DPZ : **Data Layer**\n• Time-series optimized storage\n• In-memory caching\n• Historical analytics\n• Compliance audit trails
+
+note top of WIL : **Professional Interface**\n• Bloomberg Terminal-style UI\n• Real-time chart updates\n• TradingView-like visualizations\n• Sub-100ms response times
+
+' Performance annotations
+note as N1
+**System Performance Targets:**
+• Market Data Latency: <100μs
+• Order-to-Market: <1ms  
+• Risk Calculations: <10ms
+• Web Updates: <50ms
+• 99.9% Uptime SLA
+end note
+
+note as N2
+**Technology Stack:**
+• Python 3.11+ with Numba JIT
+• Rust for critical path components
+• Redis for real-time caching
+• InfluxDB for time series
+• React + Chart.js frontend
+• WebSocket for real-time data
+end note
+
+N1 .up. ULL
+N2 .down. DPZ
+
+@enduml

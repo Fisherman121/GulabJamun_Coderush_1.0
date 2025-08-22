@@ -1,0 +1,221 @@
+@startuml HFT_Trading_System_Architecture
+!theme aws-orange
+!define AWSPUML https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/v15.0/dist
+!includeurl AWSPUML/AWSCommon.puml
+!includeurl AWSPUML/ApplicationIntegration/APIGateway.puml
+!includeurl AWSPUML/Database/DynamoDB.puml
+!includeurl AWSPUML/Analytics/Kinesis.puml
+
+title Jane Street-Inspired High-Frequency Trading System Architecture
+
+skinparam backgroundColor #0a0a0a
+skinparam defaultTextColor #ffffff
+skinparam packageBorderColor #333333
+skinparam packageBackgroundColor #1a1a1a
+skinparam componentBorderColor #666666
+skinparam componentBackgroundColor #1e1e1e
+skinparam noteBorderColor #00d4aa
+skinparam noteBackgroundColor #0a2a1a
+
+' External Systems
+cloud "Market Data Feeds" as MDF {
+  component "NSE/BSE Feed" as NSE #00ff88
+  component "Binance API" as BINANCE #ffa726
+  component "Bybit API" as BYBIT #ff4757
+  component "Hyperliquid API" as HYPER #00d4aa
+  component "MEXC API" as MEXC #0ea5e9
+}
+
+cloud "Risk Management" as RM {
+  component "Position Limits" as PL #ff6b6b
+  component "VaR Calculator" as VAR #ffa502
+  component "Drawdown Monitor" as DD #ff6348
+  component "Circuit Breakers" as CB #ff4757
+}
+
+' Core Trading Engine
+package "HFT Trading Engine" as HTE {
+  
+  ' Market Data Layer
+  package "Market Data Layer" as MDL {
+    component "Data Ingestion" as DI #00d4aa
+    component "Market Data Processor" as MDP #0ea5e9
+    component "L2 Order Book" as L2OB #ffa726
+    component "Trade Feed Handler" as TFH #ff9ff3
+    
+    DI --> MDP : Raw Data
+    MDP --> L2OB : Normalized Data
+    MDP --> TFH : Trade Data
+  }
+
+  ' Analytics Layer
+  package "Real-Time Analytics" as RTA {
+    component "GARCH Volatility Model" as GVM #ff6b6b
+    component "Order Book Analytics" as OBA #ffa502
+    component "Imbalance Calculator" as IC #ff9ff3
+    component "Price Prediction Engine" as PPE #00d4aa
+    component "Adverse Selection Detector" as ASD #ff4757
+    
+    L2OB --> OBA : Order Book Data
+    OBA --> IC : Book Metrics
+    MDP --> GVM : Price Data
+    GVM --> PPE : Volatility
+    TFH --> ASD : Trade Flow
+  }
+
+  ' Strategy Layer
+  package "Trading Strategy Engine" as TSE {
+    component "Market Making Strategy" as MMS #00ff88
+    component "Quote Generator" as QG #00d4aa
+    component "Inventory Manager" as IM #ffa726
+    component "Spread Calculator" as SC #0ea5e9
+    
+    PPE --> MMS : Predictions
+    IC --> QG : Imbalance Data
+    GVM --> SC : Volatility
+    MMS --> IM : Position Updates
+    QG --> SC : Quote Requests
+  }
+
+  ' Execution Layer
+  package "Order Management System" as OMS {
+    component "Order Router" as OR #ff9ff3
+    component "Fill Simulator" as FS #ffa502
+    component "Latency Monitor" as LM #ff6b6b
+    component "Order Book Manager" as OBM #00d4aa
+    
+    SC --> OR : Order Instructions
+    OR --> FS : Order Placement
+    FS --> OBM : Fill Updates
+    OR --> LM : Timing Data
+  }
+
+  ' P&L and Risk
+  package "Performance & Risk" as PR {
+    component "P&L Engine" as PLE #00ff88
+    component "Position Tracker" as PT #ffa726
+    component "Performance Analytics" as PA #0ea5e9
+    component "Sharpe Calculator" as SHC #ff9ff3
+    
+    OBM --> PT : Position Changes
+    PT --> PLE : Position Data
+    PLE --> PA : P&L Data
+    PA --> SHC : Returns Data
+  }
+}
+
+' Web Interface Layer
+package "Web Dashboard" as WD {
+  
+  package "Frontend Components" as FC {
+    component "HFT Dashboard" as HD #00d4aa
+    component "Advanced Charts" as AC #0ea5e9
+    component "Real-time Graphs" as RTG #ffa726
+    component "Performance Metrics" as PM #ff9ff3
+    
+    HD --> RTG : Live Data
+    AC --> RTG : Chart Data
+    PM --> HD : Metrics
+  }
+
+  package "Backend API" as BA {
+    component "Flask Web Server" as FWS #ff6b6b
+    component "WebSocket Handler" as WSH #ffa502
+    component "REST API Gateway" as RAG #00d4aa
+    component "Data Aggregator" as DA #0ea5e9
+    
+    FWS --> WSH : Real-time Updates
+    WSH --> RAG : API Calls
+    RAG --> DA : Data Requests
+  }
+}
+
+' Database Layer
+package "Data Storage" as DS {
+  database "Time Series DB" as TSDB #00ff88 {
+    component "Price History" as PH
+    component "Trade History" as TH
+    component "P&L History" as PLH
+    component "Volatility Data" as VD
+  }
+  
+  database "Configuration DB" as CDB #ffa726 {
+    component "Trading Parameters" as TP
+    component "Risk Limits" as RL
+    component "Strategy Config" as SCONF
+  }
+  
+  database "Real-time Cache" as RTC #0ea5e9 {
+    component "Active Orders" as AO
+    component "Live Positions" as LP
+    component "Market State" as MS
+  }
+}
+
+' Message Queue System
+package "Message Bus" as MB {
+  queue "Market Data Queue" as MDQ #ff9ff3
+  queue "Order Events Queue" as OEQ #ffa502
+  queue "Risk Events Queue" as REQ #ff4757
+  queue "Analytics Queue" as AQ #00d4aa
+  
+  MDQ --> MDP
+  OEQ --> OMS
+  REQ --> RM
+  AQ --> RTA
+}
+
+' Monitoring & Logging
+package "System Monitoring" as SM {
+  component "Latency Profiler" as LP #ff6b6b
+  component "Performance Monitor" as PM2 #ffa502
+  component "Error Handler" as EH #ff4757
+  component "Audit Logger" as AL #666666
+  
+  HTE --> LP : Timing Data
+  WD --> PM2 : System Metrics
+  HTE --> EH : Error Events
+  HTE --> AL : Audit Trail
+}
+
+' External Connections
+MDF --> MDQ : Market Data Stream
+RM --> REQ : Risk Alerts
+
+' Core Data Flow
+MDQ --> MDL : Real-time Feed
+MDL --> RTA : Processed Data
+RTA --> TSE : Analytics
+TSE --> OMS : Trading Signals
+OMS --> PR : Execution Data
+PR --> DS : Storage
+DS --> BA : Data Retrieval
+BA --> FC : Web Interface
+
+' Risk Integration
+PR --> RM : Risk Metrics
+RM --> TSE : Risk Constraints
+
+' Web Interface Integration
+FC --> BA : User Interactions
+BA --> HTE : Control Commands
+HTE --> MB : System Events
+MB --> WSH : Real-time Updates
+WSH --> FC : Live Data
+
+' Storage Integration
+PR --> TSDB : Historical Data
+TSE --> CDB : Configuration
+OMS --> RTC : Live State
+
+note top of HTE : **1ms Decision Latency**\nUltra-low latency execution\nwith FPGA-ready architecture
+
+note right of RTA : **Advanced Analytics**\n• GARCH Volatility Clustering\n• L2 Order Book Imbalance\n• Adverse Selection Detection\n• Real-time Risk Metrics
+
+note bottom of OMS : **Order Management**\n• Sub-millisecond routing\n• Smart order routing\n• Fill simulation engine\n• Latency optimization
+
+note left of WD : **Professional UI**\n• TradingView-style charts\n• Real-time P&L tracking\n• Advanced analytics dashboard\n• 50ms update cycles
+
+note top of RM : **Risk Controls**\n• Position limits\n• VaR monitoring\n• Circuit breakers\n• Drawdown protection
+
+@enduml

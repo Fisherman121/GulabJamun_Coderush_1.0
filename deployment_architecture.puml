@@ -1,0 +1,215 @@
+@startuml HFT_Deployment_Architecture
+!theme aws-orange
+
+title High-Frequency Trading System - Deployment & Infrastructure Architecture
+
+skinparam backgroundColor #0a0a0a
+skinparam defaultTextColor #ffffff
+skinparam packageBorderColor #333333
+skinparam packageBackgroundColor #1a1a1a
+skinparam nodeBackgroundColor #2a2a2a
+skinparam nodeBorderColor #555555
+
+' Production Environment
+node "Production Data Center" as PDC {
+  
+  ' High-Performance Trading Cluster
+  cluster "HFT Trading Cluster" as HTC {
+    node "Trading Server 1\n(Primary)" as TS1 #ff6b6b {
+      artifact "Trading Engine\n(Rust Core)" as TE1
+      artifact "Market Data Handler\n(C++)" as MDH1
+      artifact "Risk Engine\n(Python)" as RE1
+    }
+    
+    node "Trading Server 2\n(Backup)" as TS2 #ff9999 {
+      artifact "Trading Engine\n(Standby)" as TE2
+      artifact "Market Data Handler\n(Standby)" as MDH2
+      artifact "Risk Engine\n(Standby)" as RE2
+    }
+    
+    node "Co-location Server\n(Exchange Proximity)" as CS #00ff88 {
+      artifact "Ultra-Low Latency\nOrder Router" as ULLOR
+      artifact "Market Data\nDirect Feed" as MDDF
+    }
+  }
+  
+  ' Database Cluster
+  cluster "Database Cluster" as DBC {
+    node "Time Series Primary\n(InfluxDB)" as TSP #0ea5e9 {
+      database "Live Trading Data" as LTD
+      database "Market Data History" as MDH3
+    }
+    
+    node "Time Series Replica\n(InfluxDB)" as TSR #66c2ff {
+      database "Replicated Data" as RD2
+    }
+    
+    node "Cache Cluster\n(Redis)" as CC #ffa726 {
+      database "Real-time Cache" as RTC2
+      database "Session Cache" as SC2
+    }
+    
+    node "Configuration DB\n(PostgreSQL)" as CDB2 #ff9ff3 {
+      database "Trading Parameters" as TP2
+      database "User Management" as UM
+    }
+  }
+  
+  ' Web Application Cluster
+  cluster "Web Application Cluster" as WAC {
+    node "Web Server 1\n(Flask + Gunicorn)" as WS1 #00d4aa {
+      artifact "Flask API Server" as FAS1
+      artifact "WebSocket Handler" as WSH1
+    }
+    
+    node "Web Server 2\n(Flask + Gunicorn)" as WS2 #33e6bb {
+      artifact "Flask API Server" as FAS2
+      artifact "WebSocket Handler" as WSH2
+    }
+    
+    node "Load Balancer\n(NGINX)" as LB2 #666666 {
+      artifact "SSL Termination" as SSL
+      artifact "Request Routing" as RR
+    }
+  }
+}
+
+' Monitoring Infrastructure
+node "Monitoring & Observability" as MO {
+  node "Monitoring Stack" as MS {
+    artifact "Prometheus\n(Metrics)" as PROM #ff4757
+    artifact "Grafana\n(Dashboards)" as GRAF #ffa502
+    artifact "ELK Stack\n(Logging)" as ELK #9b59b6
+  }
+  
+  node "Alert Manager" as AM {
+    artifact "PagerDuty\nIntegration" as PD
+    artifact "Slack Alerts" as SA
+    artifact "SMS Notifications" as SMS
+  }
+}
+
+' External Connections
+cloud "Exchange Networks" as EN {
+  node "NSE/BSE\nDirect Connection" as NSE2 #00ff88
+  node "Binance\nWebSocket API" as BIN2 #ffa726
+  node "Bybit\nREST/WS API" as BYB2 #ff4757
+  node "Market Data\nVendors" as MDV #0ea5e9
+}
+
+cloud "Risk & Compliance" as RC2 {
+  node "Risk Management\nService" as RMS #ff6b6b
+  node "Compliance\nReporting" as CR2 #ffa502
+  node "Audit Trail\nStorage" as ATS #666666
+}
+
+cloud "CDN & Static Assets" as CSA {
+  node "CloudFlare CDN" as CF #ff9ff3
+  node "Static Asset\nStorage" as SAS #0ea5e9
+}
+
+' Network Infrastructure
+package "Network Infrastructure" as NI {
+  rectangle "High-Speed Network" as HSN #333333 {
+    component "10Gb Ethernet" as ETH10
+    component "Kernel Bypass\n(DPDK)" as KB
+    component "Hardware\nTimestamping" as HTS
+  }
+  
+  rectangle "Security Layer" as SL #444444 {
+    component "Firewall\n(pfSense)" as FW
+    component "VPN Gateway" as VPN
+    component "DDoS Protection" as DDOS
+  }
+}
+
+' Backup & Disaster Recovery
+node "Disaster Recovery Site" as DRS {
+  node "DR Trading Server" as DRTS #999999 {
+    artifact "Cold Standby\nTrading Engine" as CSTE
+  }
+  
+  node "DR Database" as DRDB #888888 {
+    database "Backup Data\nReplication" as BDR
+  }
+}
+
+' Connection flows with latency specifications
+EN --> KB : "Market Data\n<50μs"
+KB --> MDH1 : "Ultra-fast\n<100μs"
+MDH1 --> TE1 : "Processed Data\n<200μs"
+TE1 --> ULLOR : "Orders\n<500μs"
+ULLOR --> EN : "Execution\n<1ms"
+
+TE1 --> RE1 : "Risk Check\n<300μs"
+RE1 --> TE1 : "Risk OK\n<500μs"
+
+TE1 --> LTD : "Trade Data\n<10ms"
+LTD --> RTC2 : "Live Updates\n<20ms"
+RTC2 --> WSH1 : "Real-time\n<50ms"
+
+' High availability connections
+TE1 -.-> TE2 : "Failover\nHeartbeat"
+TSP -.-> TSR : "Replication\n<1s"
+WSH1 -.-> WSH2 : "Load Balance"
+
+' Web traffic flow
+CSA --> LB2 : "Static Assets"
+LB2 --> WS1 : "API Requests"
+LB2 --> WS2 : "Load Balanced"
+WS1 --> RTC2 : "Data Queries"
+WS1 --> CDB2 : "Config Data"
+
+' Monitoring flows
+TE1 --> PROM : "Trading Metrics"
+WS1 --> PROM : "Web Metrics"
+DBC --> PROM : "DB Metrics"
+PROM --> GRAF : "Visualization"
+GRAF --> AM : "Alerts"
+
+' Risk and compliance
+TE1 --> RMS : "Risk Data"
+TE1 --> ATS : "Audit Logs"
+RMS --> CR2 : "Reports"
+
+' Disaster recovery
+LTD --> BDR : "Async Backup\n<5min"
+TE1 -.-> CSTE : "Config Sync\n<1hr"
+
+' Security layer
+EN --> DDOS : "Filtered Traffic"
+DDOS --> FW : "Clean Traffic"
+FW --> KB : "Secured Data"
+
+note top of HTC : **Trading Infrastructure**\n• Co-located servers for minimal latency\n• Hardware timestamping\n• Kernel bypass networking\n• Hot-standby failover (<1s)\n• FPGA acceleration ready
+
+note right of DBC : **Data Infrastructure**\n• InfluxDB for time-series data\n• Redis for sub-ms caching\n• PostgreSQL for configuration\n• Real-time replication\n• 99.99% availability SLA
+
+note bottom of WAC : **Web Infrastructure**\n• Horizontally scalable\n• WebSocket for real-time updates\n• NGINX load balancing\n• SSL/TLS encryption\n• Auto-scaling capabilities
+
+note left of MO : **Monitoring & Alerts**\n• Real-time performance monitoring\n• Trading metric dashboards\n• Automated alerting\n• Log aggregation & analysis\n• 24/7 system monitoring
+
+note as N3
+**Performance Specifications:**
+• Order-to-Market Latency: <1ms
+• Market Data Latency: <100μs
+• System Availability: 99.99%
+• Web Response Time: <100ms
+• Failover Time: <1 second
+• Data Backup RPO: <5 minutes
+end note
+
+note as N4
+**Compliance & Security:**
+• SOC 2 Type II certified
+• ISO 27001 compliant
+• MiFID II transaction reporting
+• GDPR data protection
+• Encrypted data at rest/transit
+• Multi-factor authentication
+end note
+
+N3 .up. PDC
+N4 .down. RC2
+
+@enduml
